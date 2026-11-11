@@ -137,6 +137,3 @@ Themes are CSS variable sets (`--bg-canvas`, `--ink-primary`, `--accent`, …) s
 
 Built with AI assistance, then reviewed and refined by **Shrishaila M**.
 
-## License
-
-Personal project. Add a license (for example MIT) if you publish it.
