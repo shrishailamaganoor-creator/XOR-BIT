@@ -2,10 +2,17 @@
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="XOR Bit: my personal life dashboard" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="XOR Bit" />
+  <meta name="application-name" content="XOR Bit" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
   <meta name="theme-color" content="#09090B" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
   <title>XOR Bit | Personal Life & Engineering OS</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -10145,6 +10152,135 @@
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<NexoraApp />);
+  </script>
+
+  <!-- PWA Install Banner & Modal -->
+  <div id="pwa-install-banner" class="hidden fixed bottom-4 right-4 z-50 transition-all duration-300">
+    <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-2xl backdrop-blur-md"
+         style="background-color: rgba(17, 17, 19, 0.94); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 20px 40px rgba(0,0,0,0.6);">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-sm shrink-0"
+           style="background: linear-gradient(135deg, #FDE047, #F59E0B); color: #09090B;">
+        ⚡
+      </div>
+      <div class="flex flex-col text-left">
+        <span class="font-mono text-xs font-bold text-white tracking-wide">Install XOR Bit</span>
+        <span class="font-mono text-[10px] text-zinc-400">Add to phone or laptop home screen</span>
+      </div>
+      <div class="flex items-center gap-1.5 ml-2">
+        <button id="pwa-install-btn" type="button"
+                class="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition hover:opacity-90 active:scale-95"
+                style="background-color: #FAFAFA; color: #09090B;">
+          Install
+        </button>
+        <button id="pwa-dismiss-btn" type="button"
+                class="px-2 py-1.5 rounded-lg text-xs font-mono text-zinc-400 hover:text-white transition"
+                aria-label="Close">
+          ✕
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- iOS Safari Install Instructions Modal -->
+  <div id="pwa-ios-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="w-full max-w-sm rounded-2xl border p-5 space-y-4"
+         style="background-color: #111113; border-color: rgba(255,255,255,0.12); color: #FAFAFA;">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⚡</span>
+          <span class="font-mono text-sm font-bold">Install XOR Bit on iPhone</span>
+        </div>
+        <button id="pwa-ios-close" class="text-zinc-400 hover:text-white font-mono text-sm">✕</button>
+      </div>
+      <div class="text-xs space-y-3 font-mono text-zinc-300">
+        <div class="flex items-start gap-2.5">
+          <span class="w-5 h-5 rounded-full bg-zinc-800 text-zinc-300 flex items-center justify-center text-[10px] shrink-0 font-bold">1</span>
+          <span>Tap the <strong>Share</strong> button <span class="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700">⎋ / ⬆</span> at the bottom of Safari.</span>
+        </div>
+        <div class="flex items-start gap-2.5">
+          <span class="w-5 h-5 rounded-full bg-zinc-800 text-zinc-300 flex items-center justify-center text-[10px] shrink-0 font-bold">2</span>
+          <span>Scroll down and tap <strong>Add to Home Screen</strong> <span class="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700">⊞</span>.</span>
+        </div>
+        <div class="flex items-start gap-2.5">
+          <span class="w-5 h-5 rounded-full bg-zinc-800 text-zinc-300 flex items-center justify-center text-[10px] shrink-0 font-bold">3</span>
+          <span>Tap <strong>Add</strong> in the top-right corner to install it!</span>
+        </div>
+      </div>
+      <button id="pwa-ios-gotit" class="w-full py-2 rounded-lg text-xs font-mono font-semibold"
+              style="background-color: #FAFAFA; color: #09090B;">
+        Got it
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('[XOR Bit] Service Worker registered:', reg.scope))
+          .catch((err) => console.warn('[XOR Bit] Service Worker error:', err));
+      });
+    }
+
+    // PWA Install Handling
+    let deferredPrompt = null;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    const banner = document.getElementById('pwa-install-banner');
+    const installBtn = document.getElementById('pwa-install-btn');
+    const dismissBtn = document.getElementById('pwa-dismiss-btn');
+    const iosModal = document.getElementById('pwa-ios-modal');
+    const iosClose = document.getElementById('pwa-ios-close');
+    const iosGotit = document.getElementById('pwa-ios-gotit');
+
+    if (!isStandalone) {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (banner && !sessionStorage.getItem('xor_pwa_dismissed')) {
+          banner.classList.remove('hidden');
+        }
+      });
+
+      if (isIOS && !sessionStorage.getItem('xor_pwa_dismissed')) {
+        setTimeout(() => {
+          if (banner) banner.classList.remove('hidden');
+        }, 1500);
+      }
+
+      if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('[XOR Bit] Install choice:', outcome);
+            deferredPrompt = null;
+            if (banner) banner.classList.add('hidden');
+          } else if (isIOS) {
+            if (iosModal) iosModal.classList.remove('hidden');
+          } else {
+            alert('To install XOR Bit on this device, click the Install App icon in your browser address bar or menu (⋮).');
+          }
+        });
+      }
+
+      if (dismissBtn) {
+        dismissBtn.addEventListener('click', () => {
+          if (banner) banner.classList.add('hidden');
+          sessionStorage.setItem('xor_pwa_dismissed', 'true');
+        });
+      }
+
+      if (iosClose) iosClose.addEventListener('click', () => iosModal.classList.add('hidden'));
+      if (iosGotit) iosGotit.addEventListener('click', () => iosModal.classList.add('hidden'));
+
+      window.addEventListener('appinstalled', () => {
+        if (banner) banner.classList.add('hidden');
+        console.log('[XOR Bit] Installed successfully as app');
+      });
+    }
   </script>
 </body>
 </html>
