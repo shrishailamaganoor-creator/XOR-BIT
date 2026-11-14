@@ -1,0 +1,6 @@
+{
+  "name": "XOR Bit — Personal Life & Engineering OS",
+  "description": "A single-file, offline-first dashboard that runs your studies, habits, money, focus and projects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
