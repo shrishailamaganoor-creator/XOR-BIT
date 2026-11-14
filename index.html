@@ -80,6 +80,18 @@
     </svg>
 
     <div id="root"></div>
+    <script>
+      if (window.location.hostname.endsWith('github.io')) {
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = './compiled/app.css';
+        document.head.appendChild(link);
+        var s = document.createElement('script');
+        s.type = 'module';
+        s.src = './compiled/app.js';
+        document.body.appendChild(s);
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
