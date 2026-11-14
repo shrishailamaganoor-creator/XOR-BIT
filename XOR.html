@@ -10151,7 +10151,206 @@
     };
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<NexoraApp />);
+    
+    // ─── AUTH LAYER ──────────────────────────────────────────────────────────
+    const AUTH_KEY = 'XOR_BIT_AUTH_V1';
+    function getAuth() {
+      try { return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); } catch (e) { return null; }
+    }
+    function saveAuth(obj) {
+      try { localStorage.setItem(AUTH_KEY, JSON.stringify(obj)); return true; } catch (e) { return false; }
+    }
+    async function sha256hex(str) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    const SignInScreen = ({ onAuth }) => {
+      const auth = getAuth();
+      const isSetup = !auth;
+      const [name, setName] = React.useState('');
+      const [pin, setPin] = React.useState('');
+      const [confirm, setConfirm] = React.useState('');
+      const [showPin, setShowPin] = React.useState(false);
+      const [err, setErr] = React.useState('');
+      const [busy, setBusy] = React.useState(false);
+      const pinRef = React.useRef(null);
+
+      React.useEffect(() => { if (pinRef.current) pinRef.current.focus(); }, []);
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setErr('');
+        if (isSetup) {
+          if (!name.trim()) { setErr('Enter your name.'); return; }
+          if (pin.length < 4) { setErr('PIN must be at least 4 digits.'); return; }
+          if (pin !== confirm) { setErr('PINs do not match.'); return; }
+          setBusy(true);
+          const hash = await sha256hex(pin);
+          saveAuth({ username: name.trim(), hash });
+          setBusy(false);
+          onAuth(name.trim());
+        } else {
+          if (!pin) { setErr('Enter your PIN.'); return; }
+          setBusy(true);
+          const hash = await sha256hex(pin);
+          setBusy(false);
+          if (hash === auth.hash) {
+            onAuth(auth.username);
+          } else {
+            setErr('Incorrect PIN. Try again.');
+            setPin('');
+            if (pinRef.current) pinRef.current.focus();
+          }
+        }
+      };
+
+      return (
+        React.createElement('div', {
+          className: 'min-h-screen flex flex-col items-center justify-center p-4',
+          style: { backgroundColor: 'var(--bg-canvas)' }
+        },
+          // Grid background
+          React.createElement('div', {
+            className: 'fixed inset-0 pointer-events-none',
+            style: {
+              backgroundImage: 'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)',
+              backgroundSize: '48px 48px'
+            }
+          }),
+          React.createElement('div', { className: 'relative z-10 w-full max-w-sm space-y-8' },
+            // Logo block
+            React.createElement('div', { className: 'text-center space-y-3' },
+              React.createElement('div', {
+                className: 'w-14 h-14 rounded-2xl flex items-center justify-center font-mono text-2xl font-bold mx-auto',
+                style: { backgroundColor: 'var(--accent)', color: 'var(--accent-fg)', boxShadow: '0 0 40px rgba(228,228,231,0.12)' }
+              }, '⚡'),
+              React.createElement('div', null,
+                React.createElement('div', {
+                  className: 'font-mono text-sm font-bold tracking-widest uppercase',
+                  style: { color: 'var(--ink-primary)' }
+                }, 'XOR Bit'),
+                React.createElement('div', {
+                  className: 'font-mono text-[11px] mt-0.5',
+                  style: { color: 'var(--ink-muted)' }
+                }, 'PERSONAL LIFE & ENGINEERING OS')
+              )
+            ),
+            // Card
+            React.createElement('div', {
+              className: 'rounded-2xl border p-6 shadow-2xl space-y-5',
+              style: { backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-hairline)' }
+            },
+              React.createElement('div', { className: 'space-y-1' },
+                React.createElement('div', {
+                  className: 'font-mono text-xs font-bold uppercase tracking-widest',
+                  style: { color: 'var(--ink-muted)' }
+                }, isSetup ? 'SYSTEM INIT' : 'AUTHENTICATE'),
+                React.createElement('div', {
+                  className: 'text-base font-semibold',
+                  style: { color: 'var(--ink-primary)' }
+                }, isSetup ? 'Create your secure PIN' : ('Welcome back, ' + (auth ? auth.username : 'Operator'))),
+                React.createElement('div', {
+                  className: 'text-xs',
+                  style: { color: 'var(--ink-secondary)' }
+                }, isSetup ? 'PIN is stored locally on this device only.' : 'Enter your PIN to unlock XOR Bit.')
+              ),
+              React.createElement('form', { onSubmit: handleSubmit, className: 'space-y-4' },
+                isSetup && React.createElement('div', { className: 'space-y-1.5' },
+                  React.createElement('label', {
+                    className: 'font-mono text-[11px] uppercase tracking-widest',
+                    style: { color: 'var(--ink-muted)' }
+                  }, 'Your Name'),
+                  React.createElement('input', {
+                    type: 'text',
+                    value: name,
+                    onChange: e => { setName(e.target.value); setErr(''); },
+                    placeholder: 'Shrishaila M',
+                    autoComplete: 'name',
+                    className: 'arch-input w-full rounded-lg px-3 py-2.5 text-sm font-mono',
+                    style: { backgroundColor: 'var(--bg-elevated)', color: 'var(--ink-primary)' }
+                  })
+                ),
+                React.createElement('div', { className: 'space-y-1.5' },
+                  React.createElement('label', {
+                    className: 'font-mono text-[11px] uppercase tracking-widest',
+                    style: { color: 'var(--ink-muted)' }
+                  }, isSetup ? 'Create PIN' : 'PIN'),
+                  React.createElement('div', { className: 'relative' },
+                    React.createElement('input', {
+                      ref: pinRef,
+                      type: showPin ? 'text' : 'password',
+                      value: pin,
+                      onChange: e => { setPin(e.target.value); setErr(''); },
+                      placeholder: isSetup ? 'Min 4 digits' : '••••••',
+                      inputMode: 'numeric',
+                      autoComplete: isSetup ? 'new-password' : 'current-password',
+                      className: 'arch-input w-full rounded-lg px-3 py-2.5 text-sm font-mono pr-14',
+                      style: { backgroundColor: 'var(--bg-elevated)', color: 'var(--ink-primary)' }
+                    }),
+                    React.createElement('button', {
+                      type: 'button',
+                      onClick: () => setShowPin(v => !v),
+                      className: 'absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[9px] uppercase tracking-widest',
+                      style: { color: 'var(--ink-muted)' }
+                    }, showPin ? 'HIDE' : 'SHOW')
+                  )
+                ),
+                isSetup && React.createElement('div', { className: 'space-y-1.5' },
+                  React.createElement('label', {
+                    className: 'font-mono text-[11px] uppercase tracking-widest',
+                    style: { color: 'var(--ink-muted)' }
+                  }, 'Confirm PIN'),
+                  React.createElement('input', {
+                    type: showPin ? 'text' : 'password',
+                    value: confirm,
+                    onChange: e => { setConfirm(e.target.value); setErr(''); },
+                    placeholder: 'Repeat PIN',
+                    inputMode: 'numeric',
+                    autoComplete: 'new-password',
+                    className: 'arch-input w-full rounded-lg px-3 py-2.5 text-sm font-mono',
+                    style: { backgroundColor: 'var(--bg-elevated)', color: 'var(--ink-primary)' }
+                  })
+                ),
+                err && React.createElement('div', {
+                  className: 'font-mono text-xs rounded-lg px-3 py-2 border',
+                  style: { color: 'var(--status-err)', backgroundColor: 'rgba(244,63,94,0.08)', borderColor: 'rgba(244,63,94,0.2)' }
+                }, '⚠ ' + err),
+                React.createElement('button', {
+                  type: 'submit',
+                  disabled: busy,
+                  className: 'w-full arch-btn-primary rounded-lg py-2.5 text-sm font-mono font-semibold transition-all',
+                  style: { opacity: busy ? 0.6 : 1 }
+                }, busy ? 'VERIFYING...' : isSetup ? 'INITIALISE SYSTEM →' : 'UNLOCK →')
+              ),
+              !isSetup && React.createElement('button', {
+                type: 'button',
+                onClick: () => {
+                  if (window.confirm('Reset PIN? Your app data is NOT deleted.')) {
+                    localStorage.removeItem(AUTH_KEY);
+                    window.location.reload();
+                  }
+                },
+                className: 'w-full text-center font-mono text-[10px] uppercase tracking-widest mt-1',
+                style: { color: 'var(--ink-muted)' }
+              }, 'Forgot PIN / Reset Access')
+            ),
+            React.createElement('div', {
+              className: 'text-center font-mono text-[10px]',
+              style: { color: 'var(--ink-muted)' }
+            }, 'PIN stored locally · no data leaves your device')
+          )
+        )
+      );
+    };
+
+    const AppWithAuth = () => {
+      const [authed, setAuthed] = React.useState(false);
+      if (!authed) return React.createElement(SignInScreen, { onAuth: () => setAuthed(true) });
+      return React.createElement(NexoraApp, null);
+    };
+
+    root.render(React.createElement(AppWithAuth, null));
   </script>
 
   <!-- PWA Install Banner & Modal -->
